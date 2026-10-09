@@ -154,6 +154,29 @@ class GuildVoiceSession {
                 }
             }
 
+            // ── Rama archivo (soundboard): reproduce el binario directo ──
+            if (current.type === 'file') {
+                const filePath = current.filePath;
+                if (!filePath || !fs.existsSync(filePath)) {
+                    throw new Error('Archivo de sonido no encontrado en el bot.');
+                }
+                const resource = createAudioResource(fs.createReadStream(filePath), {
+                    inputType: StreamType.Arbitrary,
+                    inlineVolume: true,
+                });
+                if (current.volume !== undefined && resource.volume) {
+                    const v = Math.max(0, Math.min(100, Number(current.volume) || 100)) / 100;
+                    resource.volume.setVolume(v);
+                }
+                this.player.play(resource);
+
+                if (current.onStart) {
+                    current.onStart({ name: current.label || 'Soundboard' });
+                }
+                return;
+            }
+
+            // ── Rama TTS (comportamiento original) ──
             const { stream, voice } = await ttsManager.generateAudio(
                 current.text,
                 current.voiceId,
@@ -171,7 +194,7 @@ class GuildVoiceSession {
                 current.onStart(voice);
             }
         } catch (err) {
-            console.error(`[Guild ${this.guildId}] Error sintetizando audio:`, err);
+            console.error(`[Guild ${this.guildId}] Error reproduciendo audio:`, err);
             if (current.onError) {
                 current.onError(err);
             }
