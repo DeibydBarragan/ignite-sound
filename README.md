@@ -63,3 +63,6 @@ The bot includes a lightweight HTTP server (default port `3002`):
 - `GET /api/sounds`: Soundboard catalog (`{ total, sounds }`, with `hasFile` flag).
 - `GET /api/sounds/:id/preview`: `.mp3` stream for the web (404 + `code: NO_AUDIO_FILE` if it has no binary yet).
 - `POST /api/sounds/play`: Plays a sound in Discord (`{ guildId, channelId, soundId, volume }`).
+- `POST /api/sounds/upload`: Creates a sound with its audio (`multipart/form-data`: `file` + `name`, `emoji`, `category`, `duration`). Formats: mp3, ogg, wav, webm, m4a. Limit 5 MB (recommended ≤ 2 MB / 10 s).
+- `PUT /api/sounds/:id/file`: Attaches or replaces the audio of an existing sound (useful to enable the 12 built-in sounds in Discord).
+- `DELETE /api/sounds/:id`: Deletes the sound and its binary.

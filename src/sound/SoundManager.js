@@ -119,6 +119,36 @@ class SoundManager {
         return { ...sound };
     }
 
+    /** Directorio donde viven los binarios (para configurar multer en server.js). */
+    get audioDir() {
+        ensureDirs();
+        return AUDIO_DIR;
+    }
+
+    /**
+     * Asocia o reemplaza el binario de un sonido existente.
+     * @param {string} id
+     * @param {string} file nombre del archivo dentro de AUDIO_DIR
+     * @param {number} [duration] duración aprox. en segundos (1-30)
+     */
+    setFile(id, file, duration = null) {
+        const sound = this.get(id);
+        if (!sound) return null;
+        // Borra el binario anterior si es distinto (mejor esfuerzo)
+        try {
+            if (sound.file && sound.file !== file) {
+                const prev = path.isAbsolute(sound.file) ? sound.file : path.join(AUDIO_DIR, sound.file);
+                if (fs.existsSync(prev)) fs.unlinkSync(prev);
+            }
+        } catch {}
+        sound.file = file;
+        if (duration !== null && duration !== undefined && Number.isFinite(Number(duration))) {
+            sound.duration = Math.max(1, Math.min(30, Math.round(Number(duration))));
+        }
+        this.persist();
+        return { ...sound, hasFile: true };
+    }
+
     remove(id) {
         const idx = this.sounds.findIndex((s) => s.id === id);
         if (idx === -1) return false;

@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('node:fs');
 const path = require('node:path');
+const multer = require('multer');
 const ttsManager = require('../tts/TtsManager');
 const soundManager = require('../sound/SoundManager');
 const voiceManager = require('../voice/voiceManager');
@@ -239,6 +240,95 @@ function createApiServer(client) {
             console.error('[API /sounds/play] Error procesando emisión:', err);
             return res.status(500).json({ error: err.message || 'Error procesando solicitud de sonido' });
         }
+    });
+
+    // ─── Subida de audios (Soundboard) ──────────────────────
+    const MAX_SOUND_BYTES = 5 * 1024 * 1024; // 5 MB
+    const AUDIO_EXTS = new Set(['.mp3', '.ogg', '.oga', '.wav', '.webm', '.m4a']);
+    const SOUND_CATEGORIES = new Set(['memes', 'gaming', 'reactions', 'sfx', 'anime']);
+
+    const soundUpload = multer({
+        storage: multer.diskStorage({
+            destination: (req, file, cb) => cb(null, soundManager.audioDir),
+            filename: (req, file, cb) => {
+                const ext = path.extname(file.originalname || '').toLowerCase();
+                const safeExt = AUDIO_EXTS.has(ext) ? ext : '.mp3';
+                cb(null, `snd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${safeExt}`);
+            },
+        }),
+        limits: { fileSize: MAX_SOUND_BYTES, files: 1 },
+        fileFilter: (req, file, cb) => {
+            const ext = path.extname(file.originalname || '').toLowerCase();
+            if (!AUDIO_EXTS.has(ext)) {
+                return cb(new Error('Formato no soportado. Usa mp3, ogg, wav, webm o m4a (máx. 5 MB).'));
+            }
+            cb(null, true);
+        },
+    }).single('file');
+
+    const handleSoundUpload = (req, res, onOk) => {
+        soundUpload(req, res, (err) => {
+            if (err) {
+                const msg =
+                    err.code === 'LIMIT_FILE_SIZE'
+                        ? 'El archivo supera el límite de 5 MB.'
+                        : err.message || 'Error al procesar el archivo.';
+                return res.status(400).json({ error: msg });
+            }
+            if (!req.file) {
+                return res.status(400).json({ error: 'Falta el archivo de audio (campo "file").' });
+            }
+            onOk();
+        });
+    };
+
+    // POST /api/sounds/upload — crea un sonido nuevo con su .mp3
+    // multipart/form-data: file (requerido), name (requerido), emoji, category, duration
+    app.post('/api/sounds/upload', (req, res) => {
+        handleSoundUpload(req, res, () => {
+            const name = String(req.body?.name || '').trim();
+            if (!name) {
+                try { fs.unlinkSync(req.file.path); } catch {}
+                return res.status(400).json({ error: 'El campo "name" es obligatorio.' });
+            }
+            const category = SOUND_CATEGORIES.has(req.body?.category) ? req.body.category : 'memes';
+            try {
+                const sound = soundManager.add({
+                    name,
+                    emoji: String(req.body?.emoji || '🎵').trim() || '🎵',
+                    category,
+                    duration: req.body?.duration,
+                    preset: 'tada',
+                    file: path.basename(req.file.path),
+                });
+                return res.status(201).json({ success: true, sound: { ...sound, hasFile: true } });
+            } catch (err) {
+                try { fs.unlinkSync(req.file.path); } catch {}
+                return res.status(400).json({ error: err.message || 'Error registrando el sonido.' });
+            }
+        });
+    });
+
+    // PUT /api/sounds/:id/file — asocia o reemplaza el audio de un sonido existente
+    // (sirve para habilitar en Discord los 12 sonidos iniciales). multipart/form-data: file, duration?
+    app.put('/api/sounds/:id/file', (req, res) => {
+        handleSoundUpload(req, res, () => {
+            const sound = soundManager.setFile(req.params.id, path.basename(req.file.path), req.body?.duration);
+            if (!sound) {
+                try { fs.unlinkSync(req.file.path); } catch {}
+                return res.status(404).json({ error: 'Sonido no encontrado.' });
+            }
+            return res.json({ success: true, sound });
+        });
+    });
+
+    // DELETE /api/sounds/:id — elimina el sonido y su binario
+    app.delete('/api/sounds/:id', (req, res) => {
+        const ok = soundManager.remove(req.params.id);
+        if (!ok) {
+            return res.status(404).json({ error: 'Sonido no encontrado.' });
+        }
+        return res.json({ success: true });
     });
 
     return app;
