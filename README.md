@@ -38,6 +38,7 @@ npm start
 
 - `/tts <text> [voice] [speed]`: Synthesizes the message and plays it in your voice channel.
 - `/sound <name> [volume]`: Plays a soundboard effect in your voice channel (with autocomplete).
+- `/sound-add <name> <file> [category] [emoji]`: Adds a new effect to the soundboard with an audio attachment (mp3/ogg/wav/webm/m4a, max 5 MB).
 - `/voices`: Shows the full voice catalog with flags and identifiers.
 - `/stop`: Stops the current playback and clears the pending message queue.
 - `/leave`: Disconnects the bot from the voice channel.

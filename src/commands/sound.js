@@ -76,7 +76,7 @@ module.exports = {
         const filePath = soundManager.resolveFile(sound);
         if (!filePath) {
             return interaction.reply({
-                content: `⚠️ **${sound.emoji || '🔊'} ${sound.name}** aún no tiene archivo de audio en el bot. Sube el .mp3 desde el dashboard para habilitarlo en Discord.`,
+                content: `⚠️ **${sound.emoji || '🔊'} ${sound.name}** aún no tiene archivo de audio en el bot. Súbelo con \`/sound-add\` o desde el dashboard para habilitarlo en Discord.`,
                 flags: MessageFlags.Ephemeral,
             });
         }
