@@ -101,7 +101,7 @@ class SoundManager {
      * Registra un sonido con binario ya guardado en AUDIO_DIR.
      * (El endpoint de upload del paso 3 usará este método.)
      */
-    add({ name, emoji = '🎵', category = 'memes', duration = 2, preset = 'tada', file = null }) {
+    add({ name, emoji = '🎵', category = 'memes', duration = 2, preset = 'tada', file = null, uploadedBy = null }) {
         const cleanName = String(name || '').trim();
         if (!cleanName) throw new Error('El nombre del sonido es obligatorio.');
         const sound = {
@@ -113,6 +113,10 @@ class SoundManager {
             preset,
             playsCount: 0,
             file: file || null,
+            // Discord user id de quien lo subió (null = sonido de serie). Lo usa
+            // el frontend para la sección "Propios". Sin restricción de escucha:
+            // cualquiera puede reproducir cualquier sonido.
+            uploadedBy: uploadedBy ? String(uploadedBy) : null,
         };
         this.sounds.unshift(sound);
         this.persist();

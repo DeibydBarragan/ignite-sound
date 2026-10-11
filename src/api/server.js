@@ -283,7 +283,7 @@ function createApiServer(client) {
     };
 
     // POST /api/sounds/upload — crea un sonido nuevo con su .mp3
-    // multipart/form-data: file (requerido), name (requerido), emoji, category, duration
+    // multipart/form-data: file (requerido), name (requerido), emoji, category, duration, userId (opcional: dueño)
     app.post('/api/sounds/upload', (req, res) => {
         handleSoundUpload(req, res, () => {
             const name = String(req.body?.name || '').trim();
@@ -300,6 +300,7 @@ function createApiServer(client) {
                     duration: req.body?.duration,
                     preset: 'tada',
                     file: path.basename(req.file.path),
+                    uploadedBy: String(req.body?.userId || '').trim() || null,
                 });
                 return res.status(201).json({ success: true, sound: { ...sound, hasFile: true } });
             } catch (err) {
