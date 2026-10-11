@@ -153,6 +153,29 @@ class SoundManager {
         return { ...sound, hasFile: true };
     }
 
+    /**
+     * Actualiza nombre / emoji / categoría de un sonido existente.
+     * @returns {object|null} copia del sonido actualizado, o null si no existe.
+     */
+    update(id, { name, emoji, category } = {}) {
+        const sound = this.get(id);
+        if (!sound) return null;
+        const CATEGORIES = new Set(['memes', 'gaming', 'reactions', 'sfx', 'anime']);
+        if (name !== undefined) {
+            const clean = String(name).trim().slice(0, 60);
+            if (!clean) throw new Error('El nombre del sonido es obligatorio.');
+            sound.name = clean;
+        }
+        if (emoji !== undefined) {
+            sound.emoji = String(emoji).trim() || '🎵';
+        }
+        if (category !== undefined && CATEGORIES.has(category)) {
+            sound.category = category;
+        }
+        this.persist();
+        return { ...sound, hasFile: Boolean(sound.file) };
+    }
+
     remove(id) {
         const idx = this.sounds.findIndex((s) => s.id === id);
         if (idx === -1) return false;

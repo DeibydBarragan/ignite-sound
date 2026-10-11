@@ -323,6 +323,23 @@ function createApiServer(client) {
         });
     });
 
+    // PUT /api/sounds/:id — edita nombre / emoji / categoría (JSON, sin archivo)
+    app.put('/api/sounds/:id', (req, res) => {
+        try {
+            const updated = soundManager.update(req.params.id, {
+                name: req.body?.name,
+                emoji: req.body?.emoji,
+                category: req.body?.category,
+            });
+            if (!updated) {
+                return res.status(404).json({ error: 'Sonido no encontrado.' });
+            }
+            return res.json({ success: true, sound: updated });
+        } catch (err) {
+            return res.status(400).json({ error: err.message || 'Error actualizando el sonido.' });
+        }
+    });
+
     // DELETE /api/sounds/:id — elimina el sonido y su binario
     app.delete('/api/sounds/:id', (req, res) => {
         const ok = soundManager.remove(req.params.id);
