@@ -330,6 +330,7 @@ function createApiServer(client) {
                 name: req.body?.name,
                 emoji: req.body?.emoji,
                 category: req.body?.category,
+                uploadedBy: req.body?.uploadedBy,
             });
             if (!updated) {
                 return res.status(404).json({ error: 'Sonido no encontrado.' });

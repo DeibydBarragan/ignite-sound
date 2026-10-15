@@ -157,7 +157,7 @@ class SoundManager {
      * Actualiza nombre / emoji / categoría de un sonido existente.
      * @returns {object|null} copia del sonido actualizado, o null si no existe.
      */
-    update(id, { name, emoji, category } = {}) {
+    update(id, { name, emoji, category, uploadedBy } = {}) {
         const sound = this.get(id);
         if (!sound) return null;
         const CATEGORIES = new Set(['memes', 'gaming', 'reactions', 'sfx', 'anime']);
@@ -171,6 +171,9 @@ class SoundManager {
         }
         if (category !== undefined && CATEGORIES.has(category)) {
             sound.category = category;
+        }
+        if (uploadedBy !== undefined) {
+            sound.uploadedBy = uploadedBy ? String(uploadedBy) : null;
         }
         this.persist();
         return { ...sound, hasFile: Boolean(sound.file) };
