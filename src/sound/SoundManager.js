@@ -93,6 +93,7 @@ class SoundManager {
         const sound = this.get(id);
         if (!sound) return null;
         sound.playsCount = (sound.playsCount || 0) + 1;
+        sound.lastPlayedAt = Date.now();
         this.persist();
         return { ...sound };
     }
@@ -112,6 +113,7 @@ class SoundManager {
             duration: Number(duration) || 2,
             preset,
             playsCount: 0,
+            lastPlayedAt: null,
             file: file || null,
             // Discord user id de quien lo subió (null = sonido de serie). Lo usa
             // el frontend para la sección "Propios". Sin restricción de escucha:
