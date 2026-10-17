@@ -20,6 +20,7 @@ const log = logger.createLogger('api');
 
 function createApiApp(client) {
     const app = express();
+    app.set('trust proxy', 1);
     app.disable('x-powered-by');
     app.use(helmet());
 
@@ -53,6 +54,7 @@ function createApiApp(client) {
             limit: config.api.rateLimitPerMinute,
             standardHeaders: true,
             legacyHeaders: false,
+            validate: { xForwardedForHeader: false },
         })
     );
 
