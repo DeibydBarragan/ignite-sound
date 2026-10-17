@@ -28,7 +28,7 @@ function getFfmpegPath() {
  *
  * @param {string} inputPath
  * @param {string} outputPath
- * @param {{ targetLufs?: number, truePeak?: number, lra?: number, sampleRate?: number, bitrate?: string }} [options]
+ * @param {{ targetLufs?: number, truePeak?: number, lra?: number, sampleRate?: number, bitrate?: string, trimSilence?: boolean, silenceThreshold?: number, silenceDuration?: number }} [options]
  * @returns {Promise<{ success: boolean, outputPath: string }>}
  */
 function normalizeAudio(inputPath, outputPath, options = {}) {
@@ -38,10 +38,22 @@ function normalizeAudio(inputPath, outputPath, options = {}) {
         lra = 11,
         sampleRate = 48000,
         bitrate = '192k',
+        trimSilence = true,
+        silenceThreshold = -50,
+        silenceDuration = 0.03,
     } = options;
 
     const ffmpeg = getFfmpegPath();
-    const filter = `loudnorm=I=${targetLufs}:TP=${truePeak}:LRA=${lra}`;
+    const filters = [];
+
+    if (trimSilence) {
+        const trim = `silenceremove=start_periods=1:start_duration=${silenceDuration}:start_threshold=${silenceThreshold}dB`;
+        filters.push(trim, 'areverse', trim, 'areverse');
+    }
+
+    filters.push(`loudnorm=I=${targetLufs}:TP=${truePeak}:LRA=${lra}`);
+    const filter = filters.join(',');
+
     const args = [
         '-y',
         '-i', inputPath,
@@ -91,7 +103,7 @@ async function normalizeFileInPlace(filePath, options = {}) {
     try {
         await normalizeAudio(filePath, tempPath, options);
         await fsp.rename(tempPath, filePath);
-        log.info(`Normalized audio in-place: ${path.basename(filePath)} (-16 LUFS)`);
+        log.info(`Normalized audio in-place: ${path.basename(filePath)} (silence trimmed + -16 LUFS)`);
         return { success: true, normalized: true };
     } catch (err) {
         await fsp.unlink(tempPath).catch(() => {});

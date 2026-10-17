@@ -27,7 +27,7 @@ async function run() {
         return;
     }
 
-    console.log(`Found ${files.length} audio file(s). Starting normalization (-16 LUFS, -1.5 TP, 48kHz)...\n`);
+    console.log(`Found ${files.length} audio file(s). Starting processing (trim silence + -16 LUFS, -1.5 TP, 48kHz)...\n`);
 
     let successCount = 0;
     let failCount = 0;
