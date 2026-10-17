@@ -2,6 +2,7 @@
 
 const { SlashCommandBuilder } = require('discord.js');
 const voiceManager = require('../voice/voiceManager');
+const { getMemberVoiceChannel, replyEphemeral } = require('./_shared');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,12 +10,9 @@ module.exports = {
         .setDescription('Detiene la reproducción de voz actual y vacía la cola de TTS.'),
 
     async execute(interaction) {
-        const memberVoiceChannel = interaction.member?.voice?.channel;
+        const memberVoiceChannel = getMemberVoiceChannel(interaction);
         if (!memberVoiceChannel) {
-            return interaction.reply({
-                content: '❌ Debes estar en el canal de voz para detener la reproducción.',
-                ephemeral: true,
-            });
+            return replyEphemeral(interaction, '❌ Debes estar en el canal de voz para detener la reproducción.');
         }
 
         const session = voiceManager.getSession(interaction.guildId);

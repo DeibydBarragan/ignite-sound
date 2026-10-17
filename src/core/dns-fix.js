@@ -10,7 +10,7 @@ if (typeof dns.setDefaultResultOrder === 'function') {
 }
 
 const origLookup = dns.lookup;
-dns.lookup = function (host, options, callback) {
+dns.lookup = /** @type {any} */ (function (host, options, callback) {
     if (typeof options === 'function') {
         callback = options;
         options = { family: 4 };
@@ -22,4 +22,4 @@ dns.lookup = function (host, options, callback) {
         options = { family: 4 };
     }
     return origLookup.call(this, host, options, callback);
-};
+});

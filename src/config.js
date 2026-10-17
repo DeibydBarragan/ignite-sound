@@ -1,12 +1,13 @@
 'use strict';
 
 const path = require('node:path');
+
 require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true });
 
 try {
-    const ffmpegPath = require('ffmpeg-static');
-    if (ffmpegPath && !process.env.FFMPEG_PATH) {
-        process.env.FFMPEG_PATH = ffmpegPath;
+    const ffmpegStatic = require('ffmpeg-static');
+    if (ffmpegStatic && !process.env.FFMPEG_PATH) {
+        process.env.FFMPEG_PATH = String(ffmpegStatic);
     }
 } catch {}
 
@@ -27,19 +28,25 @@ const bool = (key, fallback = false) => {
     return ['1', 'true', 'yes', 'on'].includes(value);
 };
 
+const list = (key) => env(key).split(',').map((item) => item.trim()).filter(Boolean);
+
 const parseColor = (value) => {
     const hex = String(value).replace('#', '');
     const parsed = Number.parseInt(hex, 16);
     return /^[0-9a-f]{6}$/i.test(hex) && Number.isFinite(parsed) ? parsed : 0xff4500;
 };
 
-module.exports = {
+const config = {
     root: path.join(__dirname, '..'),
+    dataDir: path.resolve(path.join(__dirname, '..'), env('DATA_DIR', 'data')),
     debug: bool('DEBUG', false),
+    noColor: Boolean(env('NO_COLOR')),
 
     discord: {
         token: env('DISCORD_TOKEN'),
-        clientId: env('CLIENT_ID'),
+        get clientId() {
+            return env('CLIENT_ID');
+        },
         guildId: env('GUILD_ID') || null,
     },
 
@@ -48,6 +55,7 @@ module.exports = {
         color: parseColor(env('EMBED_COLOR', '#FF4500')),
         prefix: env('PREFIX', '!'),
         leaveOnEmpty: int('LEAVE_ON_EMPTY', 60, { min: 0 }),
+        leaveOnEmptyMs: int('LEAVE_ON_EMPTY', 60, { min: 0 }) * 1000,
         maxTtsLength: int('MAX_TTS_LENGTH', 300, { min: 20, max: 2000 }),
         defaultVoice: env('DEFAULT_VOICE', 'es-MX-DaliaNeural'),
     },
@@ -57,7 +65,28 @@ module.exports = {
     },
 
     api: {
+        enabled: bool('API_ENABLED', true),
         port: int('PORT', 3002, { min: 1024, max: 65535 }),
-        key: env('API_KEY', ''),
+        // Accepts API_SECRET or fallback to legacy API_KEY
+        secret: env('API_SECRET') || env('API_KEY'),
+        get key() {
+            return config.api.secret;
+        },
+        allowedOrigins: list('API_ALLOWED_ORIGINS'),
+        rateLimitPerMinute: int('API_RATE_LIMIT_PER_MINUTE', 120, { min: 1, max: 100000 }),
     },
 };
+
+/**
+ * Recursively freeze configuration so runtime code cannot mutate it.
+ */
+const deepFreeze = (value) => {
+    if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const descriptor of Object.values(Object.getOwnPropertyDescriptors(value))) {
+        if ('value' in descriptor) deepFreeze(descriptor.value);
+    }
+    return value;
+};
+
+module.exports = deepFreeze(config);

@@ -1,10 +1,11 @@
 'use strict';
 
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const voiceManager = require('../voice/voiceManager');
 const { VOICES, getVoiceById } = require('../tts/voiceRegistry');
 const voicePreferences = require('../tts/voicePreferences');
 const config = require('../config');
+const { getMemberVoiceChannel, hasVoicePermissions, replyEphemeral } = require('./_shared');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -59,30 +60,22 @@ module.exports = {
     },
 
     async execute(interaction) {
-        const memberVoiceChannel = interaction.member?.voice?.channel;
+        const memberVoiceChannel = getMemberVoiceChannel(interaction);
         if (!memberVoiceChannel) {
-            return interaction.reply({
-                content: '❌ Debes estar en un canal de voz para usar el comando TTS.',
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(interaction, '❌ Debes estar en un canal de voz para usar el comando TTS.');
         }
 
-        const permissions = memberVoiceChannel.permissionsFor(interaction.client.user);
-        if (permissions && (!permissions.has('Connect') || !permissions.has('Speak'))) {
-            return interaction.reply({
-                content: '❌ No tengo permisos suficientes para unirme y hablar en ese canal de voz.',
-                flags: MessageFlags.Ephemeral,
-            });
+        if (!hasVoicePermissions(memberVoiceChannel, interaction.client.user)) {
+            return replyEphemeral(interaction, '❌ No tengo permisos suficientes para unirme y hablar en ese canal de voz.');
         }
 
         let text = interaction.options.getString('texto');
         let voiceId = interaction.options.getString('voz');
         const speed = interaction.options.getString('velocidad') || '+0%';
 
-        // Detección inteligente si el usuario escribió la voz dentro del texto:
-        // Ejemplos: "hola:Loquendo (Jorge)", "hola voz:loquendo", "hola | loquendo"
+        // Detección si el usuario escribió la voz dentro del texto:
         if (!voiceId) {
-            const voiceMatch = text.match(/(?:^|\s+)(?:voz|voice|:)\s*([a-zA-Z0-9_\-\(\)áéíóúÁÉÍÓÚ ]+)$/i);
+            const voiceMatch = text.match(/(?:^|\s+)(?:voz|voice|:)\s*([a-zA-Z0-9_\-()áéíóúÁÉÍÓÚ ]+)$/i);
             if (voiceMatch) {
                 const potentialVoice = voiceMatch[1].trim();
                 const matched = getVoiceById(potentialVoice);

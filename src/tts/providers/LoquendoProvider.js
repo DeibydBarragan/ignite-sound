@@ -3,6 +3,9 @@
 const { Readable } = require('node:stream');
 const BaseProvider = require('./BaseProvider');
 const EdgeTtsProvider = require('./EdgeTtsProvider');
+const logger = require('../../core/logger');
+
+const log = logger.createLogger('tts:loquendo');
 
 class LoquendoProvider extends BaseProvider {
     /**
@@ -17,10 +20,10 @@ class LoquendoProvider extends BaseProvider {
 
     /**
      * Sintetiza la voz clásica de Loquendo.
-     * Si hay una API URL configurada, solicita el audio a dicha URL.
-     * De lo contrario, utiliza la voz española clásica con modulación característica de Jorge.
+     * Si hay una API URL configurada, solicita el audio a dicha URL con timeout de 10s.
+     * De lo contrario, utiliza emulación neuronal con modulación de Jorge / Carlos.
      * @param {string} text Texto a sintetizar
-     * @param {object} options Opciones de voz
+     * @param {{ voice?: string, rate?: string | number, pitch?: string | number, volume?: string }} [options] Opciones de voz
      * @returns {Promise<{ stream: import('node:stream').Readable, format: string }>}
      */
     async synthesize(text, options = {}) {
@@ -28,6 +31,8 @@ class LoquendoProvider extends BaseProvider {
         if (!sanitized) {
             throw new Error('El texto para sintetizar no puede estar vacío.');
         }
+
+        const opts = options || {};
 
         // 1. Si el usuario configuró una API propia o proxy de Loquendo
         if (this.apiUrl) {
@@ -37,9 +42,10 @@ class LoquendoProvider extends BaseProvider {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: sanitized,
-                        voice: options.voice || 'Jorge',
+                        voice: opts.voice || 'Jorge',
                         lang: 'es',
                     }),
+                    signal: AbortSignal.timeout(10_000),
                 });
 
                 if (response.ok) {
@@ -48,20 +54,20 @@ class LoquendoProvider extends BaseProvider {
                     return { stream, format: 'mp3' };
                 }
             } catch (err) {
-                console.warn(`[LoquendoProvider] Error conectando a API externa (${this.apiUrl}), usando motor interno:`, err.message);
+                log.warn(`Error conectando a API externa (${this.apiUrl}), usando motor interno:`, err.message);
             }
         }
 
-        // 2. Emulación de la voz clásica de Loquendo:
-        // Si es Carlos, se usa la voz latina masculina. Para Jorge, la clásica voz castellana.
-        const isCarlos = options.voice && options.voice.includes('carlos');
+        // 2. Emulación de la voz clásica de Loquendo
+        const voiceStr = String(opts.voice || '');
+        const isCarlos = voiceStr.includes('carlos');
         const targetVoice = isCarlos ? 'es-MX-JorgeNeural' : 'es-ES-AlvaroNeural';
 
         return await this.fallbackProvider.synthesize(sanitized, {
             voice: targetVoice,
-            rate: options.rate || '-3%',
-            pitch: options.pitch || '-4Hz',
-            volume: options.volume || '+10%',
+            rate: opts.rate || '-3%',
+            pitch: opts.pitch || '-4Hz',
+            volume: opts.volume || '+10%',
         });
     }
 }

@@ -1,9 +1,10 @@
 'use strict';
 
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { VOICES, getVoiceById } = require('../tts/voiceRegistry');
 const voicePreferences = require('../tts/voicePreferences');
 const config = require('../config');
+const { replyEphemeral } = require('./_shared');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -42,10 +43,10 @@ module.exports = {
         const voice = getVoiceById(voiceInput);
 
         if (!voice) {
-            return interaction.reply({
-                content: '❌ No se encontró esa voz. Por favor selecciona una voz válida del menú desplegable.',
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(
+                interaction,
+                '❌ No se encontró esa voz. Por favor selecciona una voz válida del menú desplegable.'
+            );
         }
 
         voicePreferences.setUserVoice(interaction.user.id, voice.id);
@@ -55,7 +56,7 @@ module.exports = {
             .setTitle('🎙️ Voz Predeterminada Guardada')
             .setDescription(
                 `Tu voz predeterminada ahora es: **${voice.flag} ${voice.name}**\n\n` +
-                `De ahora en adelante, cada vez que uses \`/tts texto: ...\`, el bot hablará automáticamente con esta voz sin que tengas que elegirla de nuevo.`
+                'De ahora en adelante, cada vez que uses `/tts texto: ...`, el bot hablará automáticamente con esta voz sin que tengas que elegirla de nuevo.'
             )
             .setFooter({
                 text: interaction.user.username,

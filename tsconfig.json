@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": true,
+        "noEmit": true,
+        "target": "es2023",
+        "lib": ["es2023"],
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "strict": false,
+        "skipLibCheck": true,
+        "resolveJsonModule": true
+    },
+    "include": [
+        "src/config.js",
+        "src/core/logger.js",
+        "src/core/dns-fix.js",
+        "src/core/store.js",
+        "src/sound/sound-manager.js",
+        "src/tts/voicePreferences.js",
+        "src/tts/text-sanitizer.js",
+        "src/tts/voiceRegistry.js",
+        "src/tts/TtsManager.js",
+        "src/voice/voice-lock.js",
+        "src/voice/voice-session.js",
+        "src/voice/voice-manager.js",
+        "src/api/contracts.js",
+        "src/api/middleware/**/*.js"
+    ]
+}

@@ -1,0 +1,349 @@
+openapi: 3.1.0
+info:
+  title: Ignite Sound & TTS Bot API
+  version: 2.0.0
+  description: |
+    Internal REST API exposed by ignite-sound (default port 3002).
+    Every state-changing or protected endpoint requires `Authorization: Bearer <API_SECRET>`.
+    Errors follow RFC 7807 problem details and include the legacy `error` key for frontend compatibility.
+servers:
+  - url: http://localhost:3002
+    description: Local sound bot API
+security:
+  - bearerAuth: []
+tags:
+  - name: health
+  - name: status
+  - name: voices
+  - name: tts
+  - name: sounds
+
+paths:
+  /api/v1/health:
+    get:
+      tags: [health]
+      security: []
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Service status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+                  uptime: { type: integer }
+
+  /api/v1/status:
+    get:
+      tags: [status]
+      summary: Detailed bot state
+      responses:
+        '200':
+          description: Status snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: online }
+                  service: { type: string, example: ignite-sound }
+                  uptime: { type: integer }
+                  guilds: { type: integer }
+                  timestamp: { type: string, format: date-time }
+
+  /api/v1/voices:
+    get:
+      tags: [voices]
+      summary: Curated catalog of available TTS voices
+      responses:
+        '200':
+          description: List of available voices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  voices:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Voice'
+
+  /api/v1/tts/preview:
+    post:
+      tags: [tts]
+      summary: Synthesizes TTS audio stream for in-browser preview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 300 }
+                voice: { type: string, example: es-MX-DaliaNeural }
+                rate: { oneOf: [{ type: string }, { type: number }] }
+                pitch: { oneOf: [{ type: string }, { type: number }] }
+      responses:
+        '200':
+          description: Audio stream
+          content:
+            audio/mpeg: { schema: { type: string, format: binary } }
+            audio/webm: { schema: { type: string, format: binary } }
+        '400': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/tts/speak:
+    post:
+      tags: [tts]
+      summary: Enqueues TTS synthesis and playback in a Discord voice channel
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 300 }
+                guildId: { type: string, pattern: '^\d{17,20}$' }
+                channelId: { type: string, pattern: '^\d{17,20}$' }
+                voice: { type: string }
+                rate: { oneOf: [{ type: string }, { type: number }] }
+                pitch: { oneOf: [{ type: string }, { type: number }] }
+      responses:
+        '200':
+          description: Playback initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  channel:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      name: { type: string }
+                  voice: { type: string }
+                  text: { type: string }
+        '400': { $ref: '#/components/responses/Problem' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/sounds:
+    get:
+      tags: [sounds]
+      summary: Catalog of available soundboard tracks
+      responses:
+        '200':
+          description: Sound list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  sounds:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Sound'
+
+  /api/v1/sounds/{id}/preview:
+    get:
+      tags: [sounds]
+      summary: Streams audio binary of a soundboard item for preview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Audio stream
+          content:
+            audio/mpeg: { schema: { type: string, format: binary } }
+            audio/ogg: { schema: { type: string, format: binary } }
+            audio/wav: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/sounds/play:
+    post:
+      tags: [sounds]
+      summary: Plays a sound effect in a Discord voice channel
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [soundId]
+              properties:
+                soundId: { type: string }
+                guildId: { type: string, pattern: '^\d{17,20}$' }
+                channelId: { type: string, pattern: '^\d{17,20}$' }
+                volume: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Sound emitted
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/sounds/upload:
+    post:
+      tags: [sounds]
+      summary: Upload a new sound with audio binary (multipart/form-data)
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, file]
+              properties:
+                file: { type: string, format: binary }
+                name: { type: string, minLength: 1, maxLength: 60 }
+                emoji: { type: string }
+                category: { type: string, enum: [memes, gaming, reactions, sfx, anime] }
+                duration: { type: number }
+                userId: { type: string }
+      responses:
+        '201':
+          description: Sound created
+        '400': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/sounds/{id}/file:
+    put:
+      tags: [sounds]
+      summary: Attach or replace the audio binary of an existing sound
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                duration: { type: number }
+      responses:
+        '200':
+          description: Audio updated
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /api/v1/sounds/{id}:
+    put:
+      tags: [sounds]
+      summary: Update metadata (name, emoji, category) of an existing sound
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, minLength: 1, maxLength: 60 }
+                emoji: { type: string }
+                category: { type: string, enum: [memes, gaming, reactions, sfx, anime] }
+                uploadedBy: { type: string }
+      responses:
+        '200':
+          description: Metadata updated
+        '404': { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [sounds]
+      summary: Delete a sound and its audio binary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Sound deleted
+        '404': { $ref: '#/components/responses/Problem' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    UserId:
+      name: X-User-Discord-Id
+      in: header
+      required: false
+      description: Discord snowflake of acting user (required in production for mutations)
+      schema:
+        type: string
+        pattern: '^\d{17,20}$'
+
+  schemas:
+    Voice:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        gender: { type: string }
+        lang: { type: string }
+        flag: { type: string }
+        provider: { type: string, enum: [edge, loquendo] }
+        description: { type: string }
+
+    Sound:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        emoji: { type: string }
+        category: { type: string }
+        duration: { type: number }
+        preset: { type: string }
+        playsCount: { type: integer }
+        lastPlayedAt: { type: integer, nullable: true }
+        file: { type: string, nullable: true }
+        uploadedBy: { type: string, nullable: true }
+        hasFile: { type: boolean }
+
+    Problem:
+      type: object
+      required: [type, title, status, detail, code, timestamp, error]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string }
+        timestamp: { type: string, format: date-time }
+        error: { type: string }
+
+  responses:
+    Problem:
+      description: RFC 7807 problem details document
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

@@ -2,6 +2,7 @@
 
 const { SlashCommandBuilder } = require('discord.js');
 const voiceManager = require('../voice/voiceManager');
+const { getMemberVoiceChannel, replyEphemeral } = require('./_shared');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,12 +10,9 @@ module.exports = {
         .setDescription('Desconecta al bot del canal de voz.'),
 
     async execute(interaction) {
-        const memberVoiceChannel = interaction.member?.voice?.channel;
+        const memberVoiceChannel = getMemberVoiceChannel(interaction);
         if (!memberVoiceChannel) {
-            return interaction.reply({
-                content: '❌ Debes estar en un canal de voz para desconectar al bot.',
-                ephemeral: true,
-            });
+            return replyEphemeral(interaction, '❌ Debes estar en un canal de voz para desconectar al bot.');
         }
 
         voiceManager.leave(interaction.guildId);

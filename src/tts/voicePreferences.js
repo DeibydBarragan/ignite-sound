@@ -1,60 +1,68 @@
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
 const config = require('../config');
+const { JsonStore } = require('../core/store');
+const log = require('../core/logger').createLogger('preferences');
 
-const DATA_DIR = path.join(config.root, 'data');
-const PREFS_FILE = path.join(DATA_DIR, 'voice-preferences.json');
+class VoicePreferences {
+    /**
+     * @param {{ store?: any }} [options]
+     */
+    constructor({ store } = {}) {
+        this.store = store || new JsonStore(config.dataDir);
+        this.ready = null;
+        this.init();
+    }
 
-let cache = { users: {} };
+    /**
+     * Idempotent initialization loading from JsonStore into memory.
+     */
+    init() {
+        this.ready ??= (async () => {
+            await this.store.initialize();
+            const prefs = this.store.get('voice-preferences');
+            if (!prefs || typeof prefs !== 'object' || !prefs.users) {
+                await this.store.set('voice-preferences', { users: {} });
+            }
+            return this;
+        })();
+        return this.ready;
+    }
 
-function loadPreferences() {
-    try {
-        if (fs.existsSync(PREFS_FILE)) {
-            const raw = fs.readFileSync(PREFS_FILE, 'utf8');
-            cache = JSON.parse(raw);
-        }
-    } catch (err) {
-        console.error('[VoicePreferences] Error cargando preferencias:', err.message);
+    /**
+     * Gets default voice for user from in-memory cache.
+     * @param {string} userId
+     * @returns {string} Voice ID
+     */
+    getUserVoice(userId) {
+        const prefs = this.store.get('voice-preferences');
+        return prefs?.users?.[userId] || config.bot.defaultVoice;
+    }
+
+    /**
+     * Persists default voice for user asynchronously and atomically.
+     * @param {string} userId
+     * @param {string} voiceId
+     */
+    setUserVoice(userId, voiceId) {
+        const prefs = this.store.get('voice-preferences') || { users: {} };
+        if (!prefs.users) prefs.users = {};
+        prefs.users[userId] = voiceId;
+        return this.store.set('voice-preferences', prefs).catch((err) => {
+            log.warn('Could not persist voice preference:', err.message);
+        });
+    }
+
+    drain() {
+        return this.store.drain();
     }
 }
 
-function savePreferences() {
-    try {
-        if (!fs.existsSync(DATA_DIR)) {
-            fs.mkdirSync(DATA_DIR, { recursive: true });
-        }
-        fs.writeFileSync(PREFS_FILE, JSON.stringify(cache, null, 2), 'utf8');
-    } catch (err) {
-        console.error('[VoicePreferences] Error guardando preferencias:', err.message);
-    }
-}
-
-loadPreferences();
-
-/**
- * Obtiene la voz predeterminada guardada para un usuario.
- * @param {string} userId
- * @returns {string} ID de la voz
- */
-function getUserVoice(userId) {
-    if (!cache.users) cache.users = {};
-    return cache.users[userId] || config.bot.defaultVoice;
-}
-
-/**
- * Guarda la voz predeterminada de un usuario de forma persistente.
- * @param {string} userId
- * @param {string} voiceId
- */
-function setUserVoice(userId, voiceId) {
-    if (!cache.users) cache.users = {};
-    cache.users[userId] = voiceId;
-    savePreferences();
-}
+const defaultPreferences = new VoicePreferences();
 
 module.exports = {
-    getUserVoice,
-    setUserVoice,
+    getUserVoice: (userId) => defaultPreferences.getUserVoice(userId),
+    setUserVoice: (userId, voiceId) => defaultPreferences.setUserVoice(userId, voiceId),
+    VoicePreferences,
+    defaultPreferences,
 };

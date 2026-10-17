@@ -2,6 +2,7 @@
 
 const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
 const BaseProvider = require('./BaseProvider');
+const { escapeXml } = require('../text-sanitizer');
 
 function formatPitch(val) {
     if (!val) return '+0Hz';
@@ -10,7 +11,6 @@ function formatPitch(val) {
     }
     const num = Number(val);
     if (!Number.isFinite(num)) return '+0Hz';
-    // Si viene como multiplicador decimal (ej: 0.5 a 2.5)
     if (num >= 0.4 && num <= 2.5) {
         const percent = Math.round((num - 1) * 100);
         return percent >= 0 ? `+${percent}%` : `${percent}%`;
@@ -25,7 +25,6 @@ function formatRate(val) {
     }
     const num = Number(val);
     if (!Number.isFinite(num)) return '+0%';
-    // Si viene como multiplicador decimal (ej: 0.5 a 2.5)
     if (num >= 0.4 && num <= 2.5) {
         const percent = Math.round((num - 1) * 100);
         return percent >= 0 ? `+${percent}%` : `${percent}%`;
@@ -41,16 +40,13 @@ class EdgeTtsProvider extends BaseProvider {
     /**
      * Sintetiza texto usando las voces neuronales de Microsoft Edge TTS.
      * @param {string} text Texto a sintetizar
-     * @param {object} options Opciones de voz
-     * @param {string} [options.voice='es-MX-DaliaNeural'] Voz neuronal
-     * @param {string|number} [options.rate=0] Velocidad
-     * @param {string|number} [options.pitch='+0Hz'] Tono
-     * @param {string} [options.volume='+0%'] Volumen
+     * @param {{ voice?: string, rate?: string | number, pitch?: string | number, volume?: string }} [options] Opciones de voz
      * @returns {Promise<{ stream: import('node:stream').Readable, format: string }>}
      */
     async synthesize(text, options = {}) {
-        const voice = options.voice || 'es-MX-DaliaNeural';
-        const sanitized = this.sanitizeText(text);
+        const opts = options || {};
+        const voice = opts.voice || 'es-MX-DaliaNeural';
+        const sanitized = escapeXml(text.trim());
 
         if (!sanitized) {
             throw new Error('El texto para sintetizar no puede estar vacío.');
@@ -58,13 +54,13 @@ class EdgeTtsProvider extends BaseProvider {
 
         const client = new MsEdgeTTS();
 
-        // Se pasa un objeto vacío {} como 3er argumento para evitar el bug interno de msedge-tts con undefined.voiceLocale
+        // Objeto vacío {} en 3er argumento para evitar bug de undefined.voiceLocale en msedge-tts
         await client.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3, {});
 
         const ttsOptions = {
-            rate: formatRate(options.rate),
-            pitch: formatPitch(options.pitch),
-            volume: options.volume || '+0%',
+            rate: formatRate(opts.rate),
+            pitch: formatPitch(opts.pitch),
+            volume: opts.volume || '+0%',
         };
 
         const { audioStream } = client.toStream(sanitized, ttsOptions);

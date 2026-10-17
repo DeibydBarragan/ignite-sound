@@ -2,11 +2,14 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const soundManager = require('../sound/SoundManager');
 const config = require('../config');
+const logger = require('../core/logger');
+const { replyEphemeral } = require('./_shared');
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB, igual que la API
+const log = logger.createLogger('command:sound-add');
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const AUDIO_EXTS = new Set(['.mp3', '.ogg', '.oga', '.wav', '.webm', '.m4a']);
 const CATEGORIES = ['memes', 'gaming', 'reactions', 'sfx', 'anime'];
 
@@ -49,32 +52,19 @@ module.exports = {
         const emoji = (interaction.options.getString('emoji') || '').trim() || '🎵';
 
         if (!name) {
-            return interaction.reply({
-                content: '❌ El nombre no puede estar vacío.',
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(interaction, '❌ El nombre no puede estar vacío.');
         }
         if (!attachment) {
-            return interaction.reply({
-                content: '❌ Adjunta un archivo de audio.',
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(interaction, '❌ Adjunta un archivo de audio.');
         }
 
         const ext = path.extname(attachment.name || '').toLowerCase();
-        const isAudio =
-            AUDIO_EXTS.has(ext) || (attachment.contentType || '').startsWith('audio/');
+        const isAudio = AUDIO_EXTS.has(ext) || (attachment.contentType || '').startsWith('audio/');
         if (!isAudio) {
-            return interaction.reply({
-                content: '❌ Formato no soportado. Usa mp3, ogg, wav, webm o m4a.',
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(interaction, '❌ Formato no soportado. Usa mp3, ogg, wav, webm o m4a.');
         }
         if ((attachment.size || 0) > MAX_BYTES) {
-            return interaction.reply({
-                content: '❌ El archivo supera el límite de 5 MB.',
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(interaction, '❌ El archivo supera el límite de 5 MB.');
         }
 
         await interaction.deferReply();
@@ -124,7 +114,7 @@ module.exports = {
 
             await interaction.editReply({ embeds: [embed] }).catch(() => {});
         } catch (err) {
-            console.error('[Command /sound-add] Error guardando sonido:', err);
+            log.error('Error guardando sonido:', err);
             await interaction
                 .editReply({
                     content: `❌ No se pudo guardar el sonido: ${err.message || 'error desconocido'}`,

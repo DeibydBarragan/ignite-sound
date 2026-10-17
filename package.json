@@ -7,7 +7,11 @@
   "scripts": {
     "start": "node index.js",
     "deploy": "node scripts/deploy-commands.js",
-    "check": "node scripts/check-syntax.js"
+    "test": "node --test \"test/*.test.js\"",
+    "check": "node scripts/check-syntax.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "audit": "npm audit --audit-level=high"
   },
   "keywords": [
     "discord",
@@ -20,19 +24,34 @@
   "author": "Ignite Team",
   "license": "MIT",
   "dependencies": {
+    "@discordjs/opus": "^0.10.0",
     "@discordjs/voice": "^0.19.2",
     "cors": "^2.8.5",
     "discord.js": "^14.27.0",
     "dotenv": "^16.4.7",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
     "msedge-tts": "^2.0.9",
     "multer": "^2.4.0",
-    "opusscript": "^0.0.8"
+    "pino": "^10.4.0",
+    "pino-pretty": "^13.2.0",
+    "zod": "^4.6.7"
   },
   "optionalDependencies": {
     "ffmpeg-static": "^5.3.0"
   },
+  "overrides": {
+    "@discordjs/node-pre-gyp": {
+      "tar": "^7.5.22"
+    }
+  },
   "engines": {
     "node": ">=22.12.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "typescript": "^7.0.2"
   }
 }

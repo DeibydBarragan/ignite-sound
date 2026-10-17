@@ -1,9 +1,10 @@
 'use strict';
 
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const voiceManager = require('../voice/voiceManager');
 const soundManager = require('../sound/SoundManager');
 const config = require('../config');
+const { getMemberVoiceChannel, hasVoicePermissions, replyEphemeral } = require('./_shared');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -46,20 +47,13 @@ module.exports = {
     },
 
     async execute(interaction) {
-        const memberVoiceChannel = interaction.member?.voice?.channel;
+        const memberVoiceChannel = getMemberVoiceChannel(interaction);
         if (!memberVoiceChannel) {
-            return interaction.reply({
-                content: '❌ Debes estar en un canal de voz para usar el soundboard.',
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(interaction, '❌ Debes estar en un canal de voz para usar el soundboard.');
         }
 
-        const permissions = memberVoiceChannel.permissionsFor(interaction.client.user);
-        if (permissions && (!permissions.has('Connect') || !permissions.has('Speak'))) {
-            return interaction.reply({
-                content: '❌ No tengo permisos suficientes para unirme y hablar en ese canal de voz.',
-                flags: MessageFlags.Ephemeral,
-            });
+        if (!hasVoicePermissions(memberVoiceChannel, interaction.client.user)) {
+            return replyEphemeral(interaction, '❌ No tengo permisos suficientes para unirme y hablar en ese canal de voz.');
         }
 
         const soundId = interaction.options.getString('nombre');
@@ -67,22 +61,18 @@ module.exports = {
 
         const sound = soundManager.get(soundId);
         if (!sound) {
-            return interaction.reply({
-                content: '❌ Sonido no encontrado. Usa el autocompletado para elegir uno del catálogo.',
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(interaction, '❌ Sonido no encontrado. Usa el autocompletado para elegir uno del catálogo.');
         }
 
         const filePath = soundManager.resolveFile(sound);
         if (!filePath) {
-            return interaction.reply({
-                content: `⚠️ **${sound.emoji || '🔊'} ${sound.name}** aún no tiene archivo de audio en el bot. Súbelo con \`/sound-add\` o desde el dashboard para habilitarlo en Discord.`,
-                flags: MessageFlags.Ephemeral,
-            });
+            return replyEphemeral(
+                interaction,
+                `⚠️ **${sound.emoji || '🔊'} ${sound.name}** aún no tiene archivo de audio en el bot. Súbelo con \`/sound-add\` o desde el dashboard.`
+            );
         }
 
         await interaction.deferReply();
-
         soundManager.incrementPlays(soundId);
 
         const session = voiceManager.getSession(interaction.guildId);

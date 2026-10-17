@@ -10,11 +10,11 @@ class BaseProvider {
 
     /**
      * Sintetiza texto y retorna un ReadableStream de audio o un Buffer.
-     * @param {string} text Texto a sintetizar
-     * @param {object} options Opciones de voz (voice, rate, pitch, volume)
+     * @param {string} _text Texto a sintetizar
+     * @param {object} [_options] Opciones de voz (voice, rate, pitch, volume)
      * @returns {Promise<{ stream: import('node:stream').Readable, format: string }>}
      */
-    async synthesize(text, options = {}) {
+    async synthesize(_text, _options = {}) {
         throw new Error(`synthesize() no implementado en el proveedor ${this.name}`);
     }
 

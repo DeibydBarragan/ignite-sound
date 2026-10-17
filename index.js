@@ -2,10 +2,6 @@
 
 require('./src/core/dns-fix');
 
-const SoundBot = require('./src/core/bot');
+const bootstrap = require('./src/setup/bootstrap');
 
-const bot = new SoundBot();
-bot.start().catch((err) => {
-    console.error('❌ Error al iniciar el bot:', err);
-    process.exit(1);
-});
+bootstrap.run();
