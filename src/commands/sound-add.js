@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const soundManager = require('../sound/SoundManager');
+const { normalizeFileInPlace } = require('../sound/audio-processor');
 const config = require('../config');
 const logger = require('../core/logger');
 const { replyEphemeral } = require('./_shared');
@@ -83,6 +84,7 @@ module.exports = {
             const filename = `snd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${safeExt}`;
             const dest = path.join(soundManager.audioDir, filename);
             await fs.promises.writeFile(dest, buffer);
+            await normalizeFileInPlace(dest);
 
             let sound;
             try {

@@ -83,7 +83,10 @@ async function playSound({ client, guildId, channelId, soundId, volume }) {
     };
 }
 
-function uploadSound({ name, emoji, category, duration, file, userId }) {
+const { normalizeFileInPlace } = require('../../../sound/audio-processor');
+
+async function uploadSound({ name, emoji, category, duration, file, userId }) {
+    await normalizeFileInPlace(file.path);
     const sound = soundManager.add({
         name,
         emoji,
@@ -99,7 +102,8 @@ function uploadSound({ name, emoji, category, duration, file, userId }) {
     };
 }
 
-function attachSoundFile({ id, file, duration }) {
+async function attachSoundFile({ id, file, duration }) {
+    await normalizeFileInPlace(file.path);
     const sound = soundManager.setFile(id, path.basename(file.path), duration);
     if (!sound) {
         throw new ApiError(404, 'SOUND_NOT_FOUND', 'Sonido no encontrado.');

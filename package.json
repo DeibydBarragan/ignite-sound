@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "deploy": "node scripts/deploy-commands.js",
+    "normalize-sounds": "node scripts/normalize-sounds.js",
     "test": "node --test \"test/*.test.js\"",
     "check": "node scripts/check-syntax.js",
     "lint": "eslint .",

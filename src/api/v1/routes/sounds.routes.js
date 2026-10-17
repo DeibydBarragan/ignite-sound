@@ -95,7 +95,7 @@ function createSoundsRouter(client) {
     );
 
     // ─── Subir nuevo sonido con audio ───────────────────────
-    router.post('/sounds/upload', requireAuth, requireUser, handleUpload, (req, res, next) => {
+    router.post('/sounds/upload', requireAuth, requireUser, handleUpload, async (req, res, next) => {
         if (!req.file) {
             return sendProblem(res, 400, 'FILE_REQUIRED', 'Falta el archivo de audio (campo "file").');
         }
@@ -107,7 +107,7 @@ function createSoundsRouter(client) {
         }
 
         try {
-            const result = uploadSound({
+            const result = await uploadSound({
                 name,
                 emoji: req.body?.emoji,
                 category: req.body?.category,
@@ -129,12 +129,12 @@ function createSoundsRouter(client) {
         requireUser,
         validateParams(schemas.params.soundId),
         handleUpload,
-        (req, res, next) => {
+        async (req, res, next) => {
             if (!req.file) {
                 return sendProblem(res, 400, 'FILE_REQUIRED', 'Falta el archivo de audio (campo "file").');
             }
             try {
-                const result = attachSoundFile({
+                const result = await attachSoundFile({
                     id: req.params.id,
                     file: req.file,
                     duration: req.body?.duration,
